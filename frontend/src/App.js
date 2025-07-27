@@ -4,88 +4,65 @@ function App() {
   const [password, setPassword] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
   const [status, setStatus] = useState({
-    running: false,
-    profit: 0,
-    trades: 0,
-    mode: 'demo',
-    last_signal: 'Nenhum'
+    ligado: false,
+    lucro: 0,
+    operacoes: 0,
+    modo: 'demo'
   });
 
-  const API_URL = 'https://bottrading-qmzb.onrender.com'; // ⚠️ Mude depois!
+  const API = 'https://meu-bot-backend.onrender.com'; // 🔥 Mude para seu backend
 
   const login = () => {
-    fetch(`${API_URL}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password })
-    })
-    .then(res => res.json())
-    .then(() => setAuthenticated(true))
-    .catch(() => alert('Erro ao conectar'));
+    if (password === 'secreta123') {
+      setAuthenticated(true);
+    } else {
+      alert('Senha errada!');
+    }
   };
 
-  const updateStatus = () => {
-    fetch(`${API_URL}/status`)
-      .then(res => res.json())
-      .then(setStatus)
-      .catch(console.error);
-  };
+  const ligar = () => fetch(`${API}/ligar`, { method: 'POST' });
+  const parar = () => fetch(`${API}/parar`, { method: 'POST' });
+  const mudarModo = (modo) => fetch(`${API}/modo/${modo}`, { method: 'POST' });
 
   useEffect(() => {
-    const interval = setInterval(updateStatus, 3000);
+    const interval = setInterval(() => {
+      fetch(`${API}/status`)
+        .then(r => r.json())
+        .then(data => setStatus(data))
+        .catch(console.error);
+    }, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [API]);
 
   if (!authenticated) {
     return (
-      <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="bg-white p-6 rounded-lg shadow-md w-80">
-          <h1 className="text-xl font-bold mb-4">Login</h1>
-          <input
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="Senha"
-            className="border p-2 w-full mb-4"
-          />
-          <button onClick={login} className="bg-blue-500 text-white p-2 w-full rounded">
-            Entrar
-          </button>
-        </div>
+      <div style={{ padding: 20, textAlign: 'center' }}>
+        <h2>🔐 Login</h2>
+        <input
+          type="password"
+          value={password}
+          onChange={e => setPassword(e.target.value)}
+          placeholder="Senha"
+          style={{ padding: 10, margin: 10 }}
+        />
+        <button onClick={login} style={{ padding: 10 }}>Entrar</button>
       </div>
     );
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-sm mx-auto bg-white rounded-lg shadow-md p-6">
-        <h1 className="text-2xl font-bold text-center mb-4">🤖 Bot Trader IA</h1>
+    <div style={{ padding: 20 }}>
+      <h2>🤖 Bot Trader</h2>
+      <p><b>Modo:</b> {status.modo.toUpperCase()}</p>
+      <p><b>Status:</b> {status.ligado ? '🟢 Ativo' : '🔴 Parado'}</p>
+      <p><b>Lucro:</b> R$ {status.lucro.toFixed(2)}</p>
+      <p><b>Operações:</b> {status.operacoes}</p>
 
-        <div className="mb-4">
-          <p><strong>Modo:</strong> 
-            <button onClick={() => fetch(`${API_URL}/set-mode/demo`, {method:'POST'})} className={`px-2 py-1 mx-1 ${status.mode==='demo'?'bg-blue-500 text-white':'bg-gray-200'}`}>Demo</button>
-            <button onClick={() => fetch(`${API_URL}/set-mode/real`, {method:'POST'})} className={`px-2 py-1 mx-1 ${status.mode==='real'?'bg-red-500 text-white':'bg-gray-200'}`}>Real</button>
-          </p>
-          <p><strong>Status:</strong> <span className={status.running ? 'text-green-500' : 'text-red-500'}>{status.running ? '✅ Ativo' : '🛑 Parado'}</span></p>
-          <p><strong>Lucro:</strong> R$ {status.profit.toFixed(2)}</p>
-          <p><strong>Operações:</strong> {status.trades}</p>
-          <p><strong>Último sinal:</strong> {status.last_signal}</p>
-        </div>
-
-        <div className="flex gap-2 mt-6">
-          <button
-            onClick={() => fetch(`${API_URL}/start`, { method: 'POST' })}
-            className="flex-1 bg-green-500 text-white p-3 rounded font-bold"
-          >
-            ▶️ LIGAR
-          </button>
-          <button
-            onClick={() => fetch(`${API_URL}/stop`, { method: 'POST' })}
-            className="flex-1 bg-red-500 text-white p-3 rounded font-bold"
-          >
-            ⏹️ PARAR
-          </button>
-        </div>
+      <div style={{ marginTop: 20 }}>
+        <button onClick={() => mudarModo('demo')} style={{ margin: 5 }}>Modo Demo</button>
+        <button onClick={() => mudarModo('real')} style={{ margin: 5 }}>Modo Real</button>
+        <button onClick={ligar} style={{ margin: 5, backgroundColor: 'green', color: 'white' }}>Ligar</button>
+        <button onClick={parar} style={{ margin: 5, backgroundColor: 'red', color: 'white' }}>Parar</button>
       </div>
     </div>
   );
