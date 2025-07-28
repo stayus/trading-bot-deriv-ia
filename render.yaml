@@ -1,0 +1,23 @@
+# render.yaml
+services:
+  - type: web
+    name: bot-backend
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python backend/main.py
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: DERIV_TOKEN
+        value: SEU_TOKEN_AQUI  # 🔥 COLE SEU TOKEN
+    region: frankfurt  # ou outro
+
+  - type: worker
+    name: bot-worker
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot/trader.py
+    envVars:
+      - key: DERIV_TOKEN
+        value: SEU_TOKEN_AQUI  # Igual acima
+    region: frankfurt

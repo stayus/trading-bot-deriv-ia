@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bot Trader IA</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"/>
+  <style>
+    body {
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 20px;
+    }
+    .card {
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .status-active {
+      color: green;
+      font-weight: bold;
+    }
+    .status-inactive {
+      color: #6c757d;
+    }
+    .pair-badge {
+      font-size: 0.9em;
+      padding: 5px 10px;
+      margin: 2px;
+      border-radius: 20px;
+    }
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #ccc;
+      border-top-color: #007bff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 8px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .history-row {
+      padding: 8px 0;
+      border-bottom: 1px solid #eee;
+    }
+    .profit {
+      color: green;
+    }
+    .loss {
+      color: red;
+    }
+    .btn-custom {
+      font-weight: bold;
+      padding: 10px;
+    }
+    .config-input {
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container-fluid">
+    <h1 class="text-center mb-4 text-primary"><i class="fas fa-robot"></i> Bot Trader IA</h1>
+
+    <!-- Status e Controles -->
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">📊 Status</h5>
+            <p><strong>Status:</strong> 
+              <span id="status" class="status-inactive">Parado</span>
+              <span id="loading" class="loading" style="display: none;"></span>
+            </p>
+            <p><strong>Modo:</strong> <span id="modo">Demo</span></p>
+            <p><strong>Lucro:</strong> R$ <span id="lucro">0.00</span></p>
+            <p><strong>Operações:</strong> <span id="operacoes">0</span></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">⚙️ Controles</h5>
+            <div class="mb-2">
+              <input type="number" id="valor" class="form-control config-input" placeholder="Valor por operação" value="2.0" step="0.01">
+            </div>
+            <div class="mb-2">
+              <input type="number" id="ganho" class="form-control config-input" placeholder="Meta de ganho" value="50.0" step="0.1">
+            </div>
+            <div class="mb-3">
+              <input type="number" id="perda" class="form-control config-input" placeholder="Stop loss" value="30.0" step="0.1">
+            </div>
+            <button onclick="salvarConfig()" class="btn btn-warning w-100 mb-2">💾 Salvar Config</button>
+            <div class="d-grid gap-2 d-md-flex">
+              <button onclick="mudarModo('demo')" class="btn btn-info">Modo Demo</button>
+              <button onclick="mudarModo('real')" class="btn btn-danger">Modo Real</button>
+            </div>
+            <div class="d-grid gap-2 mt-2">
+              <button onclick="ligar()" class="btn btn-success btn-custom">▶️ LIGAR BOT</button>
+              <button onclick="parar()" class="btn btn-danger btn-custom">⏹️ PARAR BOT</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pares Ativos -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">🎯 Pares Ativos</h5>
+            <div id="pares-ativos">Nenhum</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Último Sinal -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">📡 Último Sinal</h5>
+            <p id="ultimo">Aguardando análise...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Histórico -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">📋 Histórico de Operações</h5>
+            <div id="historico">
+              <p>Nenhuma operação ainda.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const API = "http://localhost:10000"; // Mude para seu Render depois
+
+    function ligar() {
+      fetch(API + "/start", { method: "POST" });
+    }
+
+    function parar() {
+      fetch(API + "/stop", { method: "POST" });
+    }
+
+    function mudarModo(modo) {
+      fetch(API + "/set-mode/" + modo, { method: "POST" });
+    }
+
+    function salvarConfig() {
+      const valor = parseFloat(document.getElementById("valor").value);
+      const ganho = parseFloat(document.getElementById("ganho").value);
+      const perda = parseFloat(document.getElementById("perda").value);
+
+      fetch(API + "/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ investment: valor, target: ganho, stop_loss: perda })
+      });
+    }
+
+    function atualizarStatus() {
+      fetch(API + "/status")
+        .then(res => res.json())
+        .then(data => {
+          // Status
+          const statusEl = document.getElementById("status");
+          const loadingEl = document.getElementById("loading");
+          statusEl.textContent = data.running ? "ATIVO" : "PARADO";
+          statusEl.className = data.running ? "status-active" : "status-inactive";
+          loadingEl.style.display = data.running ? "inline-block" : "none";
+
+          // Modo
+          document.getElementById("modo").textContent = data.mode.toUpperCase();
+
+          // Lucro e operações
+          document.getElementById("lucro").textContent = data.profit.toFixed(2);
+          document.getElementById("operacoes").textContent = data.trades;
+
+          // Pares ativos
+          const paresEl = document.getElementById("pares-ativos");
+          if (data.active_pairs && data.active_pairs.length > 0) {
+            paresEl.innerHTML = data.active_pairs.map(par => 
+              `<span class="pair-badge bg-primary text-white">${par}</span>`
+            ).join("");
+          } else {
+            paresEl.textContent = "Nenhum";
+          }
+
+          // Último sinal
+          document.getElementById("ultimo").textContent = data.last_signal;
+
+          // Histórico
+          atualizarHistorico();
+
+        })
+        .catch(err => {
+          console.log("Erro ao conectar");
+        });
+
+      setTimeout(atualizarStatus, 3000);
+    }
+
+    function atualizarHistorico() {
+      const historicoEl = document.getElementById("historico");
+      
+      // Limpa e lê o CSV (simulado aqui — depois integramos com API)
+      fetch("trades.csv")
+        .then(r => r.text())
+        .then(csv => {
+          const linhas = csv.trim().split("\n");
+          if (linhas.length <= 1) {
+            historicoEl.innerHTML = "<p>Nenhuma operação ainda.</p>";
+            return;
+          }
+
+          const rows = [];
+          for (let i = linhas.length - 1; i > 0; i--) {
+            const col = linhas[i].split(",");
+            if (col.length < 8) continue;
+            const [data, hora, ativo, sinal, valor, resultado, lucro, saldo] = col;
+            rows.push(`
+              <div class="history-row">
+                <small>
+                  <b>${ativo}</b> | ${sinal} | ${resultado} | 
+                  <span class="${resultado.includes('Win') ? 'profit' : 'loss'}">${lucro}</span> | 
+                  ${data} ${hora}
+                </small>
+              </div>
+            `);
+          }
+          historicoEl.innerHTML = rows.join("");
+        })
+        .catch(() => {
+          historicoEl.innerHTML = "<p>Carregando histórico...</p>";
+        });
+    }
+
+    // Inicia
+    atualizarStatus();
+  </script>
+</body>
+</html>
